@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水岸松林營區完整導覽</title>
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; background: #f0f4f0; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .map-wrapper { position: relative; display: inline-block; background: #fff; padding: 5px; border: 3px solid #ddd; border-radius: 10px; }
+        .map-img { display: block; max-width: 100%; height: auto; }
+
+        /* 標點顏色：紅色(有衛浴)、橘色(無衛浴/雅房)、綠色(草皮營位) */
+        .pin {
+            position: absolute; width: 34px; height: 34px; border: 2px solid #fff; border-radius: 50%;
+            cursor: pointer; transform: translate(-50%, -50%); display: flex; align-items: center;
+            justify-content: center; color: white; font-weight: bold; font-size: 11px; z-index: 5;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3); text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .pin.bath { background: #e74c3c; } 
+        .pin.no-bath { background: #f39c12; } 
+        .pin.grass { background: #27ae60; } 
+        .pin:hover { scale: 1.2; z-index: 10; filter: brightness(1.1); }
+
+        /* 彈窗 */
+        .overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:100; }
+        .modal { 
+            display: none; position: fixed; top:50%; left:50%; transform:translate(-50%, -50%);
+            background:white; width:90%; max-width:450px; border-radius:15px; z-index:101; overflow:hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .m-header { background:#2d5a27; color:white; padding:15px; font-size:1.2rem; }
+        .m-body { padding:20px; }
+        .m-row { display: flex; border-bottom: 1px solid #f0f0f0; padding: 10px 0; }
+        .m-label { font-weight: bold; color: #555; width: 95px; flex-shrink: 0; }
+        .price { color: #d35400; font-weight: bold; font-size: 1.1rem; }
+        .close-btn { width: 100%; padding: 15px; background: #eee; border: none; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2 style="color: #2d5a27;">🗺️ 水岸松林全區互動地圖</h2>
+    <p>🔴紅色：有衛浴房型 | 🟠橘色：無衛浴房型 | 🟢綠色：草皮營位</p>
+
+    <div class="map-wrapper">
+        <img src="map.jpg" alt="map.jpg" class="map-img">
+
+        <!-- 移動城堡區域 (地圖正下方紫色區塊) -->
+        <div class="pin bath" style="top: 92%; left: 30%;" onclick="pop('mobile_y')">堡有</div>
+        <div class="pin no-bath" style="top: 92%; left: 36%;" onclick="pop('mobile_n')">堡無</div>
+
+        <!-- 其他主要房型 -->
+        <div class="pin bath" style="top: 8%; left: 85%;" onclick="pop('romantic')">浪漫</div>
+        <div class="pin bath" style="top: 41%; left: 60%;" onclick="pop('animal')">動物</div>
+        <div class="pin bath" style="top: 33%; left: 28%;" onclick="pop('fairy')">童話</div>
+        <div class="pin no-bath" style="top: 35%; left: 33%;" onclick="pop('tunnel')">隧道</div>
+        <div class="pin bath" style="top: 38%; left: 32%;" onclick="pop('garden')">桂花</div>
+        <div class="pin bath" style="top: 26%; left: 33%;" onclick="pop('pink')">粉紅</div>
+        
+        <!-- 草皮 A, B, C 區 -->
+        <div class="pin grass" style="top: 15%; left: 63%;" onclick="pop('grass_a')">A區</div>
+        <div class="pin grass" style="top: 20%; left: 78%;" onclick="pop('grass_b')">B區</div>
+        <div class="pin grass" style="top: 45%; left: 30%;" onclick="pop('grass_c')">C區</div>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="hide()"></div>
+    <div class="modal" id="modal">
+        <div class="m-header" id="m-name">-</div>
+        <div class="m-body">
+            <div class="m-row"><span class="m-label">🚿 衛浴重點：</span><span id="m-bath">-</span></div>
+            <div class="m-row"><span class="m-label">📏 空間大小：</span><span id="m-size">-</span></div>
+            <div class="m-row"><span class="m-label">🛏️ 寢具配置：</span><span id="m-bed">-</span></div>
+            <div class="m-row"><span class="m-label">💰 假日價位：</span><span id="m-price" class="price">-</span></div>
+            <div class="m-row" style="color:red; background: #fff5f5;"><span class="m-label">🔥 7/11 剩餘：</span><span id="m-stock">-</span></div>
+        </div>
+        <button class="close-btn" onclick="hide()">關閉視窗</button>
+    </div>
+
+    <script>
+        const roomData = {
+            'mobile_y': { n:'移動城堡 (有衛浴款)', b:'✅ 有獨立室內衛浴', s:'室內 390*220 cm', d:'3.5*6單人加大*2 / 棉被*2 / 枕頭*4', p:'$3,500', st:'27 間' },
+            'mobile_n': { n:'移動城堡 (無衛浴款)', b:'❌ 無室內衛浴 (需使用公廁)', s:'室內 390*220 cm', d:'3.5*6單人加大*2 / 棉被*2 / 枕頭*4', p:'$2,800', st:'6 間' },
+            'romantic': { n:'浪漫屋 (4人)', b:'✅ 有獨立室內衛浴', s:'430*330 cm', d:'5*6雙人床*2 / 棉被*2 / 枕頭*4', p:'$4,200', st:'20 間' },
+            'animal': { n:'動物星球 (4人)', b:'✅ 有獨立室內衛浴', s:'床寬 338cm', d:'5*6雙人床*2 / 棉被*2 / 枕頭*4', p:'$4,000', st:'11 間' },
+            'fairy': { n:'童話屋 (4人)', b:'✅ 有獨立室內衛浴', s:'430*330 cm', d:'5*6雙人床*2 / 棉被*2 / 枕頭*4', p:'$4,200', st:'22 間' },
+            'tunnel': { n:'隧道屋 (4人)', b:'❌ 無室內衛浴', s:'210*360 cm', d:'3.5*6單人加大*2 / 棉被*2 / 枕頭*4', p:'$2,600', st:'26 間' },
+            'garden': { n:'桂花園 (2人)', b:'✅ 有獨立室內衛浴', s:'300*380 cm', d:'5*6雙人床*1 / 棉被*1 / 枕頭*2', p:'$3,200', st:'30 間' },
+            'pink': { n:'粉紅木屋 (2人)', b:'✅ 有獨立室內衛浴', s:'430*220 cm', d:'5*6雙人床*1 / 棉被*1 / 枕頭*2', p:'$3,200', st:'20 間' },
+            'grass_a': { n:'草皮營位 A區', b:'❌ 無 (公用衛浴)', s:'4米 * 6米', d:'❌ 自備帳篷寢具', p:'$1,400', st:'剩餘 13 帳' },
+            'grass_b': { n:'草皮營位 B區', b:'❌ 無 (公用衛浴)', s:'4米 * 6米', d:'❌ 自備帳篷寢具', p:'$1,400', st:'剩餘 13 帳' },
+            'grass_c': { n:'草皮營位 C區', b:'❌ 無 (公用衛浴)', s:'標準營位', d:'❌ 自備帳篷寢具', p:'$1,400', st:'剩餘 13 帳' }
+        };
+
+        function pop(id) {
+            const r = roomData[id];
+            document.getElementById('m-name').innerText = r.n;
+            document.getElementById('m-bath').innerText = r.b;
+            document.getElementById('m-size').innerText = r.s;
+            document.getElementById('m-bed').innerText = r.bed || r.d;
+            document.getElementById('m-price').innerText = r.p;
+            document.getElementById('m-stock').innerText = r.st;
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('modal').style.display = 'block';
+        }
+        function hide() { document.getElementById('overlay').style.display = 'none'; document.getElementById('modal').style.display = 'none'; }
+    </script>
+</body>
+</html>
